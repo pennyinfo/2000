@@ -2,16 +2,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
-interface Panchayath {
-  id: string;
-  name: string;
-  malayalam_name: string;
-  district: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type Panchayath = Tables<'panchayaths'>;
 
 export const usePanchayaths = () => {
   const [panchayaths, setPanchayaths] = useState<Panchayath[]>([]);
@@ -43,7 +36,7 @@ export const usePanchayaths = () => {
     }
   };
 
-  const addPanchayath = async (panchayath: Omit<Panchayath, 'id' | 'created_at' | 'updated_at'>) => {
+  const addPanchayath = async (panchayath: TablesInsert<'panchayaths'>) => {
     try {
       const { error } = await supabase
         .from('panchayaths')
@@ -69,11 +62,11 @@ export const usePanchayaths = () => {
     }
   };
 
-  const updatePanchayath = async (id: string, updates: Partial<Panchayath>) => {
+  const updatePanchayath = async (id: string, updates: TablesUpdate<'panchayaths'>) => {
     try {
       const { error } = await supabase
         .from('panchayaths')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq('id', id);
 
       if (error) {

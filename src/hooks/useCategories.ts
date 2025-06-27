@@ -2,20 +2,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Tables } from "@/integrations/supabase/types";
 
-interface Category {
-  id: string;
-  name: string;
-  name_ml: string;
-  actual_fee: number;
-  offer_fee: number;
-  division: string;
-  description: string;
-  description_ml: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type Category = Tables<'categories'>;
 
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -27,7 +16,6 @@ export const useCategories = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('is_active', true)
         .order('name');
 
       if (error) {
@@ -52,7 +40,7 @@ export const useCategories = () => {
     try {
       const { error } = await supabase
         .from('categories')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq('id', id);
 
       if (error) {

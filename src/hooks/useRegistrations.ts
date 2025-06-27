@@ -2,22 +2,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Tables } from "@/integrations/supabase/types";
 
-interface Registration {
-  id: string;
-  uid: string;
-  category: string;
-  full_name: string;
-  address: string;
-  whatsapp_number: string;
-  mobile_number: string;
-  panchayath: string;
-  ward: string;
-  pro_details: string;
-  status: "Approved" | "Pending" | "Rejected";
-  created_at: string;
-  updated_at: string;
-}
+type Registration = Tables<'registrations'>;
 
 export const useRegistrations = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -49,11 +36,11 @@ export const useRegistrations = () => {
     }
   };
 
-  const updateRegistrationStatus = async (id: string, status: "Approved" | "Pending" | "Rejected") => {
+  const updateRegistrationStatus = async (id: string, status: string) => {
     try {
       const { error } = await supabase
         .from('registrations')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ status })
         .eq('id', id);
 
       if (error) {
