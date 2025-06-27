@@ -95,8 +95,9 @@ const Admin = () => {
   }
 
   const filteredRegistrations = registrations.filter(reg => {
+    const regUid = (reg as any).uid || `ESE${reg.mobile_number}${reg.full_name?.charAt(0)?.toUpperCase() || ''}`;
     const matchesSearch = reg.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reg.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         regUid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          reg.whatsapp_number?.includes(searchTerm) ||
                          reg.mobile_number?.includes(searchTerm);
     const matchesCategory = selectedCategory === "all" || reg.category === selectedCategory;
@@ -240,39 +241,42 @@ const Admin = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredRegistrations.map((reg) => (
-                          <tr key={reg.id} className="border-b hover:bg-gray-50">
-                            <td className="p-3 font-mono text-sm">{reg.uid}</td>
-                            <td className="p-3">{reg.full_name}</td>
-                            <td className="p-3">{reg.category}</td>
-                            <td className="p-3">{reg.whatsapp_number || reg.mobile_number}</td>
-                            <td className="p-3">{reg.panchayath}</td>
-                            <td className="p-3">
-                              <Badge className={getStatusColor(reg.status)}>
-                                {reg.status}
-                              </Badge>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex space-x-2">
-                                {canEdit && (
-                                  <Select
-                                    value={reg.status}
-                                    onValueChange={(value) => updateRegistrationStatus(reg.id, value as any)}
-                                  >
-                                    <SelectTrigger className="w-32">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="Pending">Pending</SelectItem>
-                                      <SelectItem value="Approved">Approved</SelectItem>
-                                      <SelectItem value="Rejected">Rejected</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {filteredRegistrations.map((reg) => {
+                          const regUid = (reg as any).uid || `ESE${reg.mobile_number}${reg.full_name?.charAt(0)?.toUpperCase() || ''}`;
+                          return (
+                            <tr key={reg.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3 font-mono text-sm">{regUid}</td>
+                              <td className="p-3">{reg.full_name}</td>
+                              <td className="p-3">{reg.category}</td>
+                              <td className="p-3">{reg.whatsapp_number || reg.mobile_number}</td>
+                              <td className="p-3">{reg.panchayath}</td>
+                              <td className="p-3">
+                                <Badge className={getStatusColor(reg.status || 'Pending')}>
+                                  {reg.status}
+                                </Badge>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex space-x-2">
+                                  {canEdit && (
+                                    <Select
+                                      value={reg.status || 'Pending'}
+                                      onValueChange={(value) => updateRegistrationStatus(reg.id, value)}
+                                    >
+                                      <SelectTrigger className="w-32">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                        <SelectItem value="Approved">Approved</SelectItem>
+                                        <SelectItem value="Rejected">Rejected</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -300,34 +304,39 @@ const Admin = () => {
                   <div className="text-center py-8">Loading categories...</div>
                 ) : (
                   <div className="grid gap-4">
-                    {categories.map((category) => (
-                      <Card key={category.id} className="bg-gray-50">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-semibold text-lg">{category.name}</h3>
-                              <p className="text-sm text-gray-600">{category.name_ml}</p>
-                              <p className="text-xs text-gray-500 mt-1">{category.division}</p>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                              <div className="text-right">
-                                <p className="text-sm text-gray-500">Actual Fee</p>
-                                <p className="font-semibold">₹{category.actual_fee}</p>
+                    {categories.map((category) => {
+                      const categoryNameMl = (category as any).name_ml || '';
+                      return (
+                        <Card key={category.id} className="bg-gray-50">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-semibold text-lg">{category.name}</h3>
+                                {categoryNameMl && (
+                                  <p className="text-sm text-gray-600">{categoryNameMl}</p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1">{category.division}</p>
                               </div>
-                              <div className="text-right">
-                                <p className="text-sm text-gray-500">Offer Fee</p>
-                                <p className="font-semibold text-green-600">₹{category.offer_fee}</p>
+                              <div className="flex items-center space-x-4">
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-500">Actual Fee</p>
+                                  <p className="font-semibold">₹{category.actual_fee}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-500">Offer Fee</p>
+                                  <p className="font-semibold text-green-600">₹{category.offer_fee}</p>
+                                </div>
+                                {canEdit && (
+                                  <Button size="sm" variant="outline">
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </div>
-                              {canEdit && (
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                              )}
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
