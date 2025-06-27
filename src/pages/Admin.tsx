@@ -9,150 +9,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, Settings, Database, Download, Search, Edit, Trash2, Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-interface Registration {
-  id: string;
-  uid: string;
-  category: string;
-  name: string;
-  address: string;
-  whatsapp: string;
-  panchayath: string;
-  ward: string;
-  pro: string;
-  status: "Approved" | "Pending" | "Rejected";
-  createdAt: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  nameMl: string;
-  actualFee: number;
-  offerFee: number;
-  image?: string;
-}
-
-interface Panchayath {
-  id: string;
-  name: string;
-  district: string;
-}
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useRegistrations } from "@/hooks/useRegistrations";
+import { useCategories } from "@/hooks/useCategories";
+import { usePanchayaths } from "@/hooks/usePanchayaths";
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<"super" | "local" | "user" | null>(null);
+  const { isLoggedIn, currentAdmin, isLoading: authLoading, login, logout } = useAdminAuth();
+  const { registrations, isLoading: regsLoading, updateRegistrationStatus } = useRegistrations();
+  const { categories, isLoading: catsLoading, updateCategory } = useCategories();
+  const { panchayaths, isLoading: panchLoading, addPanchayath, updatePanchayath, deletePanchayath } = usePanchayaths();
+  
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedPanchayath, setSelectedPanchayath] = useState("all");
 
-  // Sample data - in real app, this would come from database
-  const [registrations] = useState<Registration[]>([
-    {
-      id: "1",
-      uid: "ESE8593999000A",
-      category: "Job Card",
-      name: "Anas",
-      address: "Pullur, Tirur, 676551",
-      whatsapp: "8593999000",
-      panchayath: "Amarambalam",
-      ward: "4",
-      pro: "Sajna",
-      status: "Approved",
-      createdAt: "2024-01-15"
-    },
-    {
-      id: "2",
-      uid: "ESE9876543210F",
-      category: "Farmelife",
-      name: "Fatima",
-      address: "Kuttippuram, Malappuram, 679571",
-      whatsapp: "9876543210",
-      panchayath: "Kuttippuram",
-      ward: "2",
-      pro: "Rasheed",
-      status: "Pending",
-      createdAt: "2024-01-16"
-    }
-  ]);
-
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      id: "job-card",
-      name: "E-life Job Card Registration",
-      nameMl: "ഇ-ലൈഫ് ജോബ് കാർഡ് രജിസ്ട്രേഷൻ",
-      actualFee: 1000,
-      offerFee: 500
-    },
-    {
-      id: "farmelife",
-      name: "Farmelife",
-      nameMl: "ഫാമേലൈഫ്",
-      actualFee: 800,
-      offerFee: 400
-    }
-  ]);
-
-  const [panchayaths, setPanchayaths] = useState<Panchayath[]>([
-    { id: "1", name: "Amarambalam", district: "Malappuram" },
-    { id: "2", name: "Kuttippuram", district: "Malappuram" },
-    { id: "3", name: "Tirur", district: "Malappuram" }
-  ]);
-
-  const adminCredentials = {
-    super: { username: "evaadmin", password: "elife919123", role: "super" as const },
-    local: { username: "admin", password: "elifesociety90094", role: "local" as const },
-    user: { username: "admin", password: "admin9094", role: "user" as const }
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const credential = Object.values(adminCredentials).find(
-      cred => cred.username === loginForm.username && cred.password === loginForm.password
+    await login(loginForm.username, loginForm.password);
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
     );
-
-    if (credential) {
-      setIsLoggedIn(true);
-      setUserRole(credential.role);
-      toast({
-        title: "Login Successful",
-        description: `Welcome ${credential.role} admin!`,
-      });
-    } else {
-      toast({
-        title: "Login Failed",
-        description: "Invalid username or password",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const filteredRegistrations = registrations.filter(reg => {
-    const matchesSearch = reg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reg.uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reg.whatsapp.includes(searchTerm);
-    const matchesCategory = selectedCategory === "all" || reg.category === selectedCategory;
-    const matchesPanchayath = selectedPanchayath === "all" || reg.panchayath === selectedPanchayath;
-    
-    return matchesSearch && matchesCategory && matchesPanchayath;
-  });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Approved": return "bg-green-100 text-green-800";
-      case "Pending": return "bg-yellow-100 text-yellow-800";
-      case "Rejected": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const canEdit = userRole === "super" || userRole === "local";
-  const canDelete = userRole === "super";
+  }
 
   if (!isLoggedIn) {
     return (
@@ -209,6 +94,29 @@ const Admin = () => {
     );
   }
 
+  const filteredRegistrations = registrations.filter(reg => {
+    const matchesSearch = reg.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         reg.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         reg.whatsapp_number?.includes(searchTerm) ||
+                         reg.mobile_number?.includes(searchTerm);
+    const matchesCategory = selectedCategory === "all" || reg.category === selectedCategory;
+    const matchesPanchayath = selectedPanchayath === "all" || reg.panchayath === selectedPanchayath;
+    
+    return matchesSearch && matchesCategory && matchesPanchayath;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Approved": return "bg-green-100 text-green-800";
+      case "Pending": return "bg-yellow-100 text-yellow-800";
+      case "Rejected": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const canEdit = currentAdmin?.role === "super" || currentAdmin?.role === "local";
+  const canDelete = currentAdmin?.role === "super";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Navigation */}
@@ -225,16 +133,12 @@ const Admin = () => {
                 Back to Home
               </Button>
               <h1 className="text-xl font-bold text-blue-800">
-                Admin Panel - {userRole?.toUpperCase()} Admin
+                Admin Panel - {currentAdmin?.role?.toUpperCase()} Admin ({currentAdmin?.username})
               </h1>
             </div>
             <Button
               variant="outline"
-              onClick={() => {
-                setIsLoggedIn(false);
-                setUserRole(null);
-                setLoginForm({ username: "", password: "" });
-              }}
+              onClick={logout}
             >
               Logout
             </Button>
@@ -264,7 +168,7 @@ const Admin = () => {
             <Card className="bg-white shadow-xl">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>Registration Details</span>
+                  <span>Registration Details ({filteredRegistrations.length})</span>
                   <Button size="sm" className="bg-green-600 hover:bg-green-700">
                     <Download className="h-4 w-4 mr-2" />
                     Export
@@ -296,11 +200,9 @@ const Admin = () => {
                       </SelectTrigger>
                       <SelectContent className="bg-white border border-gray-200 shadow-lg">
                         <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="Job Card">Job Card</SelectItem>
-                        <SelectItem value="Farmelife">Farmelife</SelectItem>
-                        <SelectItem value="Organelife">Organelife</SelectItem>
-                        <SelectItem value="Foodelife">Foodelife</SelectItem>
-                        <SelectItem value="Entrelife">Entrelife</SelectItem>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -321,51 +223,60 @@ const Admin = () => {
                 </div>
 
                 {/* Registration Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b bg-gray-50">
-                        <th className="text-left p-3 font-semibold">UID</th>
-                        <th className="text-left p-3 font-semibold">Name</th>
-                        <th className="text-left p-3 font-semibold">Category</th>
-                        <th className="text-left p-3 font-semibold">WhatsApp</th>
-                        <th className="text-left p-3 font-semibold">Panchayath</th>
-                        <th className="text-left p-3 font-semibold">Status</th>
-                        <th className="text-left p-3 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRegistrations.map((reg) => (
-                        <tr key={reg.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-mono text-sm">{reg.uid}</td>
-                          <td className="p-3">{reg.name}</td>
-                          <td className="p-3">{reg.category}</td>
-                          <td className="p-3">{reg.whatsapp}</td>
-                          <td className="p-3">{reg.panchayath}</td>
-                          <td className="p-3">
-                            <Badge className={getStatusColor(reg.status)}>
-                              {reg.status}
-                            </Badge>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex space-x-2">
-                              {canEdit && (
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button size="sm" variant="outline" className="text-red-600">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </td>
+                {regsLoading ? (
+                  <div className="text-center py-8">Loading registrations...</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-3 font-semibold">UID</th>
+                          <th className="text-left p-3 font-semibold">Name</th>
+                          <th className="text-left p-3 font-semibold">Category</th>
+                          <th className="text-left p-3 font-semibold">WhatsApp</th>
+                          <th className="text-left p-3 font-semibold">Panchayath</th>
+                          <th className="text-left p-3 font-semibold">Status</th>
+                          <th className="text-left p-3 font-semibold">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {filteredRegistrations.map((reg) => (
+                          <tr key={reg.id} className="border-b hover:bg-gray-50">
+                            <td className="p-3 font-mono text-sm">{reg.uid}</td>
+                            <td className="p-3">{reg.full_name}</td>
+                            <td className="p-3">{reg.category}</td>
+                            <td className="p-3">{reg.whatsapp_number || reg.mobile_number}</td>
+                            <td className="p-3">{reg.panchayath}</td>
+                            <td className="p-3">
+                              <Badge className={getStatusColor(reg.status)}>
+                                {reg.status}
+                              </Badge>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex space-x-2">
+                                {canEdit && (
+                                  <Select
+                                    value={reg.status}
+                                    onValueChange={(value) => updateRegistrationStatus(reg.id, value as any)}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Pending">Pending</SelectItem>
+                                      <SelectItem value="Approved">Approved</SelectItem>
+                                      <SelectItem value="Rejected">Rejected</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -385,35 +296,40 @@ const Admin = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4">
-                  {categories.map((category) => (
-                    <Card key={category.id} className="bg-gray-50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg">{category.name}</h3>
-                            <p className="text-sm text-gray-600">{category.nameMl}</p>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                              <p className="text-sm text-gray-500">Actual Fee</p>
-                              <p className="font-semibold">₹{category.actualFee}</p>
+                {catsLoading ? (
+                  <div className="text-center py-8">Loading categories...</div>
+                ) : (
+                  <div className="grid gap-4">
+                    {categories.map((category) => (
+                      <Card key={category.id} className="bg-gray-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-semibold text-lg">{category.name}</h3>
+                              <p className="text-sm text-gray-600">{category.name_ml}</p>
+                              <p className="text-xs text-gray-500 mt-1">{category.division}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-500">Offer Fee</p>
-                              <p className="font-semibold text-green-600">₹{category.offerFee}</p>
+                            <div className="flex items-center space-x-4">
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500">Actual Fee</p>
+                                <p className="font-semibold">₹{category.actual_fee}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500">Offer Fee</p>
+                                <p className="font-semibold text-green-600">₹{category.offer_fee}</p>
+                              </div>
+                              {canEdit && (
+                                <Button size="sm" variant="outline">
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
-                            {canEdit && (
-                              <Button size="sm" variant="outline">
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                            )}
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -433,39 +349,50 @@ const Admin = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b bg-gray-50">
-                        <th className="text-left p-3 font-semibold">Panchayath Name</th>
-                        <th className="text-left p-3 font-semibold">District</th>
-                        <th className="text-left p-3 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {panchayaths.map((panchayath) => (
-                        <tr key={panchayath.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-semibold">{panchayath.name}</td>
-                          <td className="p-3">{panchayath.district}</td>
-                          <td className="p-3">
-                            <div className="flex space-x-2">
-                              {canEdit && (
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button size="sm" variant="outline" className="text-red-600">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </td>
+                {panchLoading ? (
+                  <div className="text-center py-8">Loading panchayaths...</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-3 font-semibold">Panchayath Name</th>
+                          <th className="text-left p-3 font-semibold">Malayalam Name</th>
+                          <th className="text-left p-3 font-semibold">District</th>
+                          <th className="text-left p-3 font-semibold">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {panchayaths.map((panchayath) => (
+                          <tr key={panchayath.id} className="border-b hover:bg-gray-50">
+                            <td className="p-3 font-semibold">{panchayath.name}</td>
+                            <td className="p-3">{panchayath.malayalam_name}</td>
+                            <td className="p-3">{panchayath.district}</td>
+                            <td className="p-3">
+                              <div className="flex space-x-2">
+                                {canEdit && (
+                                  <Button size="sm" variant="outline">
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="text-red-600"
+                                    onClick={() => deletePanchayath(panchayath.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

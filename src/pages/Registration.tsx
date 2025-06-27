@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,18 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle, CreditCard, Users, Briefcase } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Category {
-  id: string;
-  name: string;
-  nameMl: string;
-  actualFee: number;
-  offerFee: number;
-  description: string;
-  descriptionMl: string;
-  icon: React.ReactNode;
-  color: string;
-}
+import { useCategories } from "@/hooks/useCategories";
+import { usePanchayaths } from "@/hooks/usePanchayaths";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FormData {
   fullName: string;
@@ -34,10 +25,14 @@ interface FormData {
 const Registration = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { panchayaths, isLoading: panchayathsLoading } = usePanchayaths();
+  
+  const [selectedCategoryData, setSelectedCategoryData] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [generatedUID, setGeneratedUID] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
@@ -49,100 +44,9 @@ const Registration = () => {
     selectedCategory: ""
   });
 
-  const categories: Category[] = [
-    // Pennyekart Hybrid-Ecommerce
-    {
-      id: "pennyekart-free",
-      name: "Pennyekart Free Registration",
-      nameMl: "പെന്നികാർട്ട് സൗജന്യ രജിസ്ട്രേഷൻ",
-      actualFee: 0,
-      offerFee: 0,
-      description: "Free delivery 2PM to 6PM • Home services included",
-      descriptionMl: "സൗജന്യ ഡെലിവറി 2PM മുതൽ 6PM വരെ • വീട്ടിലെത്തിക്കൽ സേവനം",
-      icon: <CreditCard className="h-6 w-6 text-blue-600" />,
-      color: "bg-blue-50 border-blue-200"
-    },
-    {
-      id: "pennyekart-paid",
-      name: "Pennyekart Paid Registration",
-      nameMl: "പെന്നികാർട്ട് പെയ്ഡ് രജിസ്ട്രേഷൻ",
-      actualFee: 500,
-      offerFee: 300,
-      description: "Delivery 8AM to 7PM • Rs.20 delivery fee may apply",
-      descriptionMl: "ഡെലിവറി 8AM മുതൽ 7PM വരെ • ₹20 ഡെലിവറി ഫീസ് ബാധകം",
-      icon: <CreditCard className="h-6 w-6 text-green-600" />,
-      color: "bg-green-50 border-green-200"
-    },
-    // E-life Self-Employment
-    {
-      id: "farmelife",
-      name: "Farmelife",
-      nameMl: "ഫാമേലൈഫ്",
-      actualFee: 800,
-      offerFee: 400,
-      description: "Dairy and poultry farm support",
-      descriptionMl: "പാലുൽപ്പാദനവും കോഴിവളർത്തലും",
-      icon: <Users className="h-6 w-6 text-green-600" />,
-      color: "bg-green-50 border-green-200"
-    },
-    {
-      id: "organelife",
-      name: "Organelife",
-      nameMl: "ഓർഗനേലൈഫ്",
-      actualFee: 600,
-      offerFee: 350,
-      description: "Organic vegetable gardening",
-      descriptionMl: "ജൈവ പച്ചക്കറി കൃഷി",
-      icon: <Users className="h-6 w-6 text-emerald-600" />,
-      color: "bg-emerald-50 border-emerald-200"
-    },
-    {
-      id: "foodelife",
-      name: "Foodelife",
-      nameMl: "ഫുഡേലൈഫ്",
-      actualFee: 700,
-      offerFee: 400,
-      description: "Food processing-based opportunities",
-      descriptionMl: "ഭക്ഷ്യ സംസ്കരണം അടിസ്ഥാനമാക്കിയുള്ള അവസരങ്ങൾ",
-      icon: <Briefcase className="h-6 w-6 text-orange-600" />,
-      color: "bg-orange-50 border-orange-200"
-    },
-    {
-      id: "entrelife",
-      name: "Entrelife",
-      nameMl: "എൻട്രേലൈഫ്",
-      actualFee: 750,
-      offerFee: 450,
-      description: "Skill-based entrepreneurship (tailoring, handicrafts)",
-      descriptionMl: "കഴിവുകൾ അടിസ്ഥാനമാക്കിയുള്ള സംരംഭകത്വം",
-      icon: <Briefcase className="h-6 w-6 text-purple-600" />,
-      color: "bg-purple-50 border-purple-200"
-    },
-    // E-life Job Card
-    {
-      id: "job-card",
-      name: "E-life Job Card Registration",
-      nameMl: "ഇ-ലൈഫ് ജോബ് കാർഡ് രജിസ്ട്രേഷൻ",
-      actualFee: 1000,
-      offerFee: 500,
-      description: "Combo registration • Special discounts • Point system",
-      descriptionMl: "കോമ്പോ രജിസ്ട്രേഷൻ • പ്രത്യേക കിഴിവുകൾ • പോയിന്റ് സിസ്റ്റം",
-      icon: <CheckCircle className="h-6 w-6 text-pink-600" />,
-      color: "bg-pink-50 border-pink-200"
-    }
-  ];
-
-  const panchayaths = [
-    { name: "Amarambalam", district: "Malappuram" },
-    { name: "Tirur", district: "Malappuram" },
-    { name: "Tanur", district: "Malappuram" },
-    { name: "Kuttippuram", district: "Malappuram" },
-    { name: "Vengara", district: "Malappuram" }
-  ];
-
-  const handleCategorySelect = (category: Category) => {
-    setSelectedCategory(category);
-    setFormData(prev => ({ ...prev, selectedCategory: category.id }));
+  const handleCategorySelect = (category: any) => {
+    setSelectedCategoryData(category);
+    setFormData(prev => ({ ...prev, selectedCategory: category.name }));
     setShowForm(true);
   };
 
@@ -155,10 +59,10 @@ const Registration = () => {
     return `ESE${whatsappNumber}${firstLetter}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.fullName || !formData.whatsappNumber || !formData.address) {
+    if (!formData.fullName || !formData.whatsappNumber || !formData.address || !formData.panchayath) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -167,18 +71,106 @@ const Registration = () => {
       return;
     }
 
-    const uid = generateUID(formData.whatsappNumber, formData.fullName);
-    setGeneratedUID(uid);
-    setShowSuccess(true);
+    setIsSubmitting(true);
 
-    // Here you would typically save to database
-    console.log("Registration Data:", { ...formData, uid, category: selectedCategory });
-    
-    toast({
-      title: "Registration Successful!",
-      description: `Your UID is: ${uid}`,
-    });
+    try {
+      // Check for duplicate WhatsApp number
+      const { data: existingRegistration } = await supabase
+        .from('registrations')
+        .select('id')
+        .or(`whatsapp_number.eq.${formData.whatsappNumber},mobile_number.eq.${formData.whatsappNumber}`)
+        .single();
+
+      if (existingRegistration) {
+        toast({
+          title: "Registration Error",
+          description: "This WhatsApp number is already registered",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const uid = generateUID(formData.whatsappNumber, formData.fullName);
+
+      // Insert registration into Supabase
+      const { data, error } = await supabase
+        .from('registrations')
+        .insert([
+          {
+            full_name: formData.fullName,
+            address: formData.address,
+            whatsapp_number: formData.whatsappNumber,
+            mobile_number: formData.whatsappNumber,
+            panchayath: formData.panchayath,
+            ward: formData.ward,
+            pro_details: formData.proDetails,
+            category: formData.selectedCategory,
+            status: 'Pending',
+            uid: uid
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Registration error:', error);
+        toast({
+          title: "Registration Failed",
+          description: "There was an error submitting your registration. Please try again.",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      setGeneratedUID(uid);
+      setShowSuccess(true);
+      
+      toast({
+        title: "Registration Successful!",
+        description: `Your UID is: ${uid}`,
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Registration Failed",
+        description: "There was an unexpected error. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const getCategoryIcon = (division: string) => {
+    if (division.includes('Pennyekart')) {
+      return <CreditCard className="h-6 w-6 text-blue-600" />;
+    } else if (division.includes('Self-Employment')) {
+      return <Users className="h-6 w-6 text-green-600" />;
+    } else {
+      return <Briefcase className="h-6 w-6 text-purple-600" />;
+    }
+  };
+
+  const getCategoryColor = (division: string) => {
+    if (division.includes('Pennyekart')) {
+      return 'bg-blue-50 border-blue-200';
+    } else if (division.includes('Self-Employment')) {
+      return 'bg-green-50 border-green-200';
+    } else {
+      return 'bg-purple-50 border-purple-200';
+    }
+  };
+
+  // Group categories by division
+  const groupedCategories = categories.reduce((acc, category) => {
+    if (!acc[category.division]) {
+      acc[category.division] = [];
+    }
+    acc[category.division].push(category);
+    return acc;
+  }, {} as Record<string, any[]>);
 
   if (showSuccess) {
     return (
@@ -204,8 +196,8 @@ const Registration = () => {
             </div>
             <div className="text-left bg-gray-50 p-4 rounded-lg">
               <p className="font-semibold text-gray-800">Registration Details:</p>
-              <p className="text-sm text-gray-600">Category: {selectedCategory?.name}</p>
-              <p className="text-sm text-gray-600">Fee: ₹{selectedCategory?.offerFee}</p>
+              <p className="text-sm text-gray-600">Category: {selectedCategoryData?.name}</p>
+              <p className="text-sm text-gray-600">Fee: ₹{selectedCategoryData?.offer_fee}</p>
               <p className="text-sm text-gray-600">Name: {formData.fullName}</p>
             </div>
             <Button 
@@ -253,137 +245,75 @@ const Registration = () => {
               <p className="text-lg text-pink-600">നിങ്ങളുടെ വിഭാഗം തിരഞ്ഞെടുക്കുക</p>
             </div>
 
-            {/* Category Sections */}
-            <div className="space-y-8">
-              {/* Pennyekart Hybrid-Ecommerce */}
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Pennyekart Hybrid-Ecommerce Registration
-                </h2>
-                <p className="text-pink-600 mb-6">പെന്നികാർട്ട് ഹൈബ്രിഡ്-ഇകൊമേഴ്സ് രജിസ്ട്രേഷൻ</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {categories.slice(0, 2).map((category) => (
-                    <Card key={category.id} className={`${category.color} hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105`} onClick={() => handleCategorySelect(category)}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {category.icon}
-                            <div>
-                              <CardTitle className="text-lg">{category.name}</CardTitle>
-                              <p className="text-sm text-gray-600">{category.nameMl}</p>
+            {categoriesLoading ? (
+              <div className="text-center py-8">Loading categories...</div>
+            ) : (
+              <div className="space-y-8">
+                {Object.entries(groupedCategories).map(([division, divisionCategories]) => (
+                  <div key={division}>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                      {division}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {divisionCategories.map((category) => (
+                        <Card 
+                          key={category.id} 
+                          className={`${getCategoryColor(category.division)} hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105`} 
+                          onClick={() => handleCategorySelect(category)}
+                        >
+                          <CardHeader>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                {getCategoryIcon(category.division)}
+                                <div>
+                                  <CardTitle className="text-lg">{category.name}</CardTitle>
+                                  <p className="text-sm text-gray-600">{category.name_ml}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                {category.actual_fee > category.offer_fee ? (
+                                  <>
+                                    <p className="text-lg font-bold text-green-600">₹{category.offer_fee}</p>
+                                    <p className="text-sm text-gray-500 line-through">₹{category.actual_fee}</p>
+                                  </>
+                                ) : (
+                                  <p className="text-lg font-bold text-green-600">
+                                    {category.offer_fee === 0 ? 'FREE' : `₹${category.offer_fee}`}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            {category.actualFee > 0 ? (
-                              <>
-                                <p className="text-lg font-bold text-green-600">₹{category.offerFee}</p>
-                                <p className="text-sm text-gray-500 line-through">₹{category.actualFee}</p>
-                              </>
-                            ) : (
-                              <p className="text-lg font-bold text-green-600">FREE</p>
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription>{category.description}</CardDescription>
-                        <p className="text-sm text-gray-600 mt-1">{category.descriptionMl}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                          </CardHeader>
+                          <CardContent>
+                            <CardDescription>{category.description}</CardDescription>
+                            <p className="text-sm text-gray-600 mt-1">{category.description_ml}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              {/* E-life Self-Employment */}
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  E-life Self-Employment Registration
-                </h2>
-                <p className="text-pink-600 mb-6">ഇ-ലൈഫ് സ്വയംതൊഴിൽ രജിസ്ട്രേഷൻ</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                  {categories.slice(2, 6).map((category) => (
-                    <Card key={category.id} className={`${category.color} hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105`} onClick={() => handleCategorySelect(category)}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {category.icon}
-                            <div>
-                              <CardTitle className="text-lg">{category.name}</CardTitle>
-                              <p className="text-sm text-gray-600">{category.nameMl}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-green-600">₹{category.offerFee}</p>
-                            <p className="text-sm text-gray-500 line-through">₹{category.actualFee}</p>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription>{category.description}</CardDescription>
-                        <p className="text-sm text-gray-600 mt-1">{category.descriptionMl}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              {/* E-life Job Card */}
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  E-life Job Card Registration
-                </h2>
-                <p className="text-pink-600 mb-6">ഇ-ലൈഫ് ജോബ് കാർഡ് രജിസ്ട്രേഷൻ</p>
-                <div className="max-w-md">
-                  {categories.slice(6).map((category) => (
-                    <Card key={category.id} className={`${category.color} hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105`} onClick={() => handleCategorySelect(category)}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {category.icon}
-                            <div>
-                              <CardTitle className="text-lg">{category.name}</CardTitle>
-                              <p className="text-sm text-gray-600">{category.nameMl}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-green-600">₹{category.offerFee}</p>
-                            <p className="text-sm text-gray-500 line-through">₹{category.actualFee}</p>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription>{category.description}</CardDescription>
-                        <p className="text-sm text-gray-600 mt-1">{category.descriptionMl}</p>
-                        <div className="mt-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                          <p className="text-xs text-yellow-800">
-                            Special: Applicable only to new joiners • Job card holders can apply for other categories
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </div>
+            )}
           </>
         ) : (
           <>
             {/* Selected Category Banner */}
-            {selectedCategory && (
-              <div className={`${selectedCategory.color} p-6 rounded-lg mb-8 border-2`}>
+            {selectedCategoryData && (
+              <div className={`${getCategoryColor(selectedCategoryData.division)} p-6 rounded-lg mb-8 border-2`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    {selectedCategory.icon}
+                    {getCategoryIcon(selectedCategoryData.division)}
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-800">{selectedCategory.name}</h2>
-                      <p className="text-gray-600">{selectedCategory.nameMl}</p>
-                      <p className="text-sm text-gray-500 mt-1">{selectedCategory.description}</p>
+                      <h2 className="text-2xl font-bold text-gray-800">{selectedCategoryData.name}</h2>
+                      <p className="text-gray-600">{selectedCategoryData.name_ml}</p>
+                      <p className="text-sm text-gray-500 mt-1">{selectedCategoryData.description}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-green-600">₹{selectedCategory.offerFee}</p>
-                    {selectedCategory.actualFee > selectedCategory.offerFee && (
-                      <p className="text-lg text-gray-500 line-through">₹{selectedCategory.actualFee}</p>
+                    <p className="text-3xl font-bold text-green-600">₹{selectedCategoryData.offer_fee}</p>
+                    {selectedCategoryData.actual_fee > selectedCategoryData.offer_fee && (
+                      <p className="text-lg text-gray-500 line-through">₹{selectedCategoryData.actual_fee}</p>
                     )}
                   </div>
                 </div>
@@ -456,7 +386,7 @@ const Registration = () => {
                           </SelectTrigger>
                           <SelectContent className="bg-white border border-gray-200 shadow-lg">
                             {panchayaths.map((panchayath) => (
-                              <SelectItem key={panchayath.name} value={panchayath.name}>
+                              <SelectItem key={panchayath.id} value={panchayath.name}>
                                 {panchayath.name} - {panchayath.district}
                               </SelectItem>
                             ))}
@@ -501,14 +431,16 @@ const Registration = () => {
                       variant="outline"
                       onClick={() => setShowForm(false)}
                       className="flex-1"
+                      disabled={isSubmitting}
                     >
                       Back to Categories / വിഭാഗങ്ങളിലേക്ക് തിരികെ
                     </Button>
                     <Button
                       type="submit"
                       className="flex-1 bg-pink-600 hover:bg-pink-700"
+                      disabled={isSubmitting}
                     >
-                      Submit Registration / രജിസ്ട്രേഷൻ സമർപ്പിക്കുക
+                      {isSubmitting ? 'Submitting...' : 'Submit Registration / രജിസ്ട്രേഷൻ സമർപ്പിക്കുക'}
                     </Button>
                   </div>
                 </form>

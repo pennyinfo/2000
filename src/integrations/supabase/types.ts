@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          password_hash: string | null
+          role: string
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          password_hash?: string | null
+          role: string
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          password_hash?: string | null
+          role?: string
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string | null
@@ -35,27 +65,62 @@ export type Database = {
       }
       categories: {
         Row: {
-          fee: number
+          actual_fee: number
+          division: string
           id: string
-          image_url: string | null
-          label: string | null
           name: string
+          offer_fee: number | null
+          popup_image: string | null
         }
         Insert: {
-          fee: number
+          actual_fee: number
+          division: string
           id?: string
-          image_url?: string | null
-          label?: string | null
           name: string
+          offer_fee?: number | null
+          popup_image?: string | null
         }
         Update: {
-          fee?: number
+          actual_fee?: number
+          division?: string
           id?: string
-          image_url?: string | null
-          label?: string | null
           name?: string
+          offer_fee?: number | null
+          popup_image?: string | null
         }
         Relationships: []
+      }
+      category_images: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_images_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -77,16 +142,19 @@ export type Database = {
       }
       panchayaths: {
         Row: {
+          district: string
           id: string
           malayalam_name: string | null
           name: string
         }
         Insert: {
+          district: string
           id?: string
           malayalam_name?: string | null
           name: string
         }
         Update: {
+          district?: string
           id?: string
           malayalam_name?: string | null
           name?: string
