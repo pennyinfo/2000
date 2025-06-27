@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { Users, Star, ArrowRight, Heart, Home, Briefcase } from "lucide-react";
+import RegistrationStatusChecker from "@/components/RegistrationStatusChecker";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -74,7 +75,10 @@ const Index = () => {
               >
                 Registration / രജിസ്ട്രേഷൻ
               </button>
-              <button className="text-gray-700 hover:text-pink-600 font-medium">
+              <button 
+                onClick={() => navigate('/categories')}
+                className="text-gray-700 hover:text-pink-600 font-medium"
+              >
                 Categories / വിഭാഗങ്ങൾ
               </button>
               <button 
@@ -90,30 +94,40 @@ const Index = () => {
 
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            Empowering Women
-            <span className="block text-pink-600">Self-Employment</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-2">
-            സ്ത്രീകളുടെ സ്വയംതൊഴിൽ പ്രോത്സാഹനം
-          </p>
-          <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
-            Join thousands of women who have started their entrepreneurial journey with us. 
-            Choose from various self-employment opportunities designed specifically for women.
-          </p>
-          <p className="text-base text-gray-500 mb-8 max-w-2xl mx-auto">
-            ഞങ്ങളോടൊപ്പം സംരംഭകത്വ യാത്ര ആരംഭിച്ച ആയിരക്കണക്കിന് സ്ത്രീകളോട് ചേരുക
-          </p>
-          
-          <Button 
-            onClick={() => navigate('/registration')}
-            size="lg" 
-            className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-4 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-          >
-            Register Now <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-          <p className="text-sm text-pink-600 mt-2">ഇപ്പോൾ രജിസ്റ്റർ ചെയ്യുക</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+          {/* Main Hero Content */}
+          <div className="lg:col-span-2">
+            <div className="text-center lg:text-left">
+              <h1 className="text-5xl font-bold text-gray-900 mb-4">
+                Empowering Women
+                <span className="block text-pink-600">Self-Employment</span>
+              </h1>
+              <p className="text-xl text-gray-600 mb-2">
+                സ്ത്രീകളുടെ സ്വയംതൊഴിൽ പ്രോത്സാഹനം
+              </p>
+              <p className="text-lg text-gray-500 mb-8 max-w-2xl">
+                Join thousands of women who have started their entrepreneurial journey with us. 
+                Choose from various self-employment opportunities designed specifically for women.
+              </p>
+              <p className="text-base text-gray-500 mb-8 max-w-2xl">
+                ഞങ്ങളോടൊപ്പം സംരംഭകത്വ യാത്ര ആരംഭിച്ച ആയിരക്കണക്കിന് സ്ത്രീകളോട് ചേരുക
+              </p>
+              
+              <Button 
+                onClick={() => navigate('/registration')}
+                size="lg" 
+                className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-4 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                Register Now <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <p className="text-sm text-pink-600 mt-2">ഇപ്പോൾ രജിസ്റ്റർ ചെയ്യുക</p>
+            </div>
+          </div>
+
+          {/* Registration Status Checker */}
+          <div className="lg:col-span-1 flex justify-center lg:justify-end">
+            <RegistrationStatusChecker />
+          </div>
         </div>
 
         {/* Self-Employment Templates */}
@@ -127,7 +141,7 @@ const Index = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {templates.map((template, index) => (
-              <Card key={index} className={`${template.color} hover:shadow-lg transition-all duration-300 transform hover:scale-105`}>
+              <Card key={index} className={`${template.color} hover:shadow-lg transition-all duration-300 transform hover:scale-105 cursor-pointer`} onClick={() => navigate('/categories')}>
                 <CardHeader className="text-center pb-4">
                   <div className="flex justify-center mb-4">
                     {template.icon}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,7 +78,7 @@ const Registration = () => {
         .from('registrations')
         .select('id')
         .or(`whatsapp_number.eq.${formData.whatsappNumber},mobile_number.eq.${formData.whatsappNumber}`)
-        .single();
+        .maybeSingle();
 
       if (existingRegistration) {
         toast({

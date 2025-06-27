@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,9 +12,11 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useRegistrations } from "@/hooks/useRegistrations";
 import { useCategories } from "@/hooks/useCategories";
 import { usePanchayaths } from "@/hooks/usePanchayaths";
+import { useToast } from "@/hooks/use-toast";
 
 const Admin = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { isLoggedIn, currentAdmin, isLoading: authLoading, login, logout } = useAdminAuth();
   const { registrations, isLoading: regsLoading, updateRegistrationStatus } = useRegistrations();
   const { categories, isLoading: catsLoading, updateCategory } = useCategories();
@@ -25,10 +26,60 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedPanchayath, setSelectedPanchayath] = useState("all");
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingPanchayath, setEditingPanchayath] = useState<string | null>(null);
+  const [categoryFormData, setCategoryFormData] = useState({ actual_fee: 0, offer_fee: 0 });
+  const [panchayathFormData, setPanchayathFormData] = useState({ name: "", malayalam_name: "", district: "" });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     await login(loginForm.username, loginForm.password);
+  };
+
+  const generateUID = (mobile: string, fullName: string) => {
+    const firstLetter = fullName.charAt(0).toUpperCase();
+    return `ESE${mobile}${firstLetter}`;
+  };
+
+  const handleCategoryEdit = async (categoryId: string) => {
+    if (editingCategory === categoryId) {
+      // Save changes
+      const success = await updateCategory(categoryId, categoryFormData);
+      if (success) {
+        setEditingCategory(null);
+      }
+    } else {
+      // Start editing
+      const category = categories.find(c => c.id === categoryId);
+      if (category) {
+        setCategoryFormData({
+          actual_fee: category.actual_fee,
+          offer_fee: category.offer_fee || 0
+        });
+        setEditingCategory(categoryId);
+      }
+    }
+  };
+
+  const handlePanchayathEdit = async (panchayathId: string) => {
+    if (editingPanchayath === panchayathId) {
+      // Save changes
+      const success = await updatePanchayath(panchayathId, panchayathFormData);
+      if (success) {
+        setEditingPanchayath(null);
+      }
+    } else {
+      // Start editing
+      const panchayath = panchayaths.find(p => p.id === panchayathId);
+      if (panchayath) {
+        setPanchayathFormData({
+          name: panchayath.name,
+          malayalam_name: panchayath.malayalam_name || "",
+          district: panchayath.district
+        });
+        setEditingPanchayath(panchayathId);
+      }
+    }
   };
 
   if (authLoading) {
@@ -95,7 +146,7 @@ const Admin = () => {
   }
 
   const filteredRegistrations = registrations.filter(reg => {
-    const regUid = (reg as any).uid || `ESE${reg.mobile_number}${reg.full_name?.charAt(0)?.toUpperCase() || ''}`;
+    const regUid = generateUID(reg.mobile_number, reg.full_name);
     const matchesSearch = reg.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          regUid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          reg.whatsapp_number?.includes(searchTerm) ||
@@ -242,7 +293,7 @@ const Admin = () => {
                       </thead>
                       <tbody>
                         {filteredRegistrations.map((reg) => {
-                          const regUid = (reg as any).uid || `ESE${reg.mobile_number}${reg.full_name?.charAt(0)?.toUpperCase() || ''}`;
+                          const regUid = generateUID(reg.mobile_number, reg.full_name);
                           return (
                             <tr key={reg.id} className="border-b hover:bg-gray-50">
                               <td className="p-3 font-mono text-sm">{regUid}</td>
@@ -291,12 +342,6 @@ const Admin = () => {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Category & Fees Management</span>
-                  {canEdit && (
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Category
-                    </Button>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -304,39 +349,64 @@ const Admin = () => {
                   <div className="text-center py-8">Loading categories...</div>
                 ) : (
                   <div className="grid gap-4">
-                    {categories.map((category) => {
-                      const categoryNameMl = (category as any).name_ml || '';
-                      return (
-                        <Card key={category.id} className="bg-gray-50">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h3 className="font-semibold text-lg">{category.name}</h3>
-                                {categoryNameMl && (
-                                  <p className="text-sm text-gray-600">{categoryNameMl}</p>
-                                )}
-                                <p className="text-xs text-gray-500 mt-1">{category.division}</p>
-                              </div>
-                              <div className="flex items-center space-x-4">
-                                <div className="text-right">
-                                  <p className="text-sm text-gray-500">Actual Fee</p>
-                                  <p className="font-semibold">₹{category.actual_fee}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm text-gray-500">Offer Fee</p>
-                                  <p className="font-semibold text-green-600">₹{category.offer_fee}</p>
-                                </div>
-                                {canEdit && (
-                                  <Button size="sm" variant="outline">
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
+                    {categories.map((category) => (
+                      <Card key={category.id} className="bg-gray-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-semibold text-lg">{category.name}</h3>
+                              <p className="text-xs text-gray-500 mt-1">{category.division}</p>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                            <div className="flex items-center space-x-4">
+                              {editingCategory === category.id ? (
+                                <>
+                                  <div className="flex space-x-2">
+                                    <div>
+                                      <Label className="text-xs">Actual Fee</Label>
+                                      <Input
+                                        type="number"
+                                        value={categoryFormData.actual_fee}
+                                        onChange={(e) => setCategoryFormData(prev => ({ ...prev, actual_fee: Number(e.target.value) }))}
+                                        className="w-20 h-8 text-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">Offer Fee</Label>
+                                      <Input
+                                        type="number"
+                                        value={categoryFormData.offer_fee}
+                                        onChange={(e) => setCategoryFormData(prev => ({ ...prev, offer_fee: Number(e.target.value) }))}
+                                        className="w-20 h-8 text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-right">
+                                    <p className="text-sm text-gray-500">Actual Fee</p>
+                                    <p className="font-semibold">₹{category.actual_fee}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm text-gray-500">Offer Fee</p>
+                                    <p className="font-semibold text-green-600">₹{category.offer_fee}</p>
+                                  </div>
+                                </>
+                              )}
+                              {canEdit && (
+                                <Button 
+                                  size="sm" 
+                                  variant={editingCategory === category.id ? "default" : "outline"}
+                                  onClick={() => handleCategoryEdit(category.id)}
+                                >
+                                  {editingCategory === category.id ? "Save" : <Edit className="h-3 w-3" />}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -349,57 +419,76 @@ const Admin = () => {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Panchayath Details Management</span>
-                  {canEdit && (
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Panchayath
-                    </Button>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {panchLoading ? (
                   <div className="text-center py-8">Loading panchayaths...</div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b bg-gray-50">
-                          <th className="text-left p-3 font-semibold">Panchayath Name</th>
-                          <th className="text-left p-3 font-semibold">Malayalam Name</th>
-                          <th className="text-left p-3 font-semibold">District</th>
-                          <th className="text-left p-3 font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {panchayaths.map((panchayath) => (
-                          <tr key={panchayath.id} className="border-b hover:bg-gray-50">
-                            <td className="p-3 font-semibold">{panchayath.name}</td>
-                            <td className="p-3">{panchayath.malayalam_name}</td>
-                            <td className="p-3">{panchayath.district}</td>
-                            <td className="p-3">
-                              <div className="flex space-x-2">
-                                {canEdit && (
-                                  <Button size="sm" variant="outline">
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                )}
-                                {canDelete && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="text-red-600"
-                                    onClick={() => deletePanchayath(panchayath.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                )}
+                  <div className="space-y-4">
+                    {panchayaths.map((panchayath) => (
+                      <Card key={panchayath.id} className="bg-gray-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            {editingPanchayath === panchayath.id ? (
+                              <div className="flex space-x-4 flex-1">
+                                <div>
+                                  <Label className="text-xs">Name</Label>
+                                  <Input
+                                    value={panchayathFormData.name}
+                                    onChange={(e) => setPanchayathFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Malayalam Name</Label>
+                                  <Input
+                                    value={panchayathFormData.malayalam_name}
+                                    onChange={(e) => setPanchayathFormData(prev => ({ ...prev, malayalam_name: e.target.value }))}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">District</Label>
+                                  <Input
+                                    value={panchayathFormData.district}
+                                    onChange={(e) => setPanchayathFormData(prev => ({ ...prev, district: e.target.value }))}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                            ) : (
+                              <div>
+                                <h3 className="font-semibold">{panchayath.name}</h3>
+                                <p className="text-sm text-gray-600">{panchayath.malayalam_name}</p>
+                                <p className="text-xs text-gray-500">{panchayath.district}</p>
+                              </div>
+                            )}
+                            <div className="flex space-x-2">
+                              {canEdit && (
+                                <Button 
+                                  size="sm" 
+                                  variant={editingPanchayath === panchayath.id ? "default" : "outline"}
+                                  onClick={() => handlePanchayathEdit(panchayath.id)}
+                                >
+                                  {editingPanchayath === panchayath.id ? "Save" : <Edit className="h-3 w-3" />}
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="text-red-600"
+                                  onClick={() => deletePanchayath(panchayath.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 )}
               </CardContent>
