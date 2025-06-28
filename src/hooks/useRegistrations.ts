@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
@@ -11,7 +10,9 @@ export const useRegistrations = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchRegistrations = async () => {
+  // Fetch all registrations
+  const fetchRegistrations = useCallback(async () => {
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('registrations')
@@ -22,51 +23,70 @@ export const useRegistrations = () => {
         console.error('Error fetching registrations:', error);
         toast({
           title: "Error",
-          description: "Failed to fetch registrations",
-          variant: "destructive"
+          description: "Failed to fetch registrations.",
+          variant: "destructive",
         });
         return;
       }
 
       setRegistrations(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
-  const updateRegistrationStatus = async (id: string, status: string) => {
-    try {
-      const { error } = await supabase
-        .from('registrations')
-        .update({ status })
-        .eq('id', id);
+  // Update status of a registration
+  const updateRegistrationStatus = useCallback(
+    async (id: string, status: string) => {
+      try {
+        const { error } = await supabase
+          .from('registrations')
+          .update({ status })
+          .eq('id', id);
 
-      if (error) {
+        if (error) {
+          console.error('Error updating status:', error);
+          toast({
+            title: "Error",
+            description: "Failed to update registration status.",
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        toast({
+          title: "Success",
+          description: "Registration status updated successfully.",
+        });
+
+        // Optionally refresh the list
+        await fetchRegistrations();
+
+        return true;
+      } catch (error) {
+        console.error('Unexpected error updating status:', error);
         toast({
           title: "Error",
-          description: "Failed to update registration status",
-          variant: "destructive"
+          description: "An unexpected error occurred.",
+          variant: "destructive",
         });
         return false;
       }
+    },
+    [toast, fetchRegistrations]
+  );
 
-      toast({
-        title: "Success",
-        description: "Registration status updated successfully",
-      });
-      return true;
-    } catch (error) {
-      console.error('Error updating status:', error);
-      return false;
-    }
-  };
-
+  // Fetch initial data and subscribe to changes
   useEffect(() => {
     fetchRegistrations();
 
-    // Set up real-time subscription
     const channel = supabase
       .channel('registrations-changes')
       .on(
@@ -74,7 +94,7 @@ export const useRegistrations = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'registrations'
+          table: 'registrations',
         },
         () => {
           fetchRegistrations();
@@ -85,12 +105,12 @@ export const useRegistrations = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchRegistrations]);
 
   return {
     registrations,
     isLoading,
     updateRegistrationStatus,
-    refreshRegistrations: fetchRegistrations
+    refreshRegistrations: fetchRegistrations,
   };
 };
