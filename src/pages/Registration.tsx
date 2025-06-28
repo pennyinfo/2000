@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { uidGenerator } from "@/utils/uidGenerator";
+import { generateUID } from '@/utils/uidGenerator'; // ✅ correct
+
 import { useCategories } from "@/hooks/useCategories";
 import { usePanchayaths } from "@/hooks/usePanchayaths";
 
