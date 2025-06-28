@@ -1,7 +1,8 @@
 // src/utils/uidGenerator.ts
 
 // ✅ Named export: use generateUID in your imports
-export const generateUID = (whatsappNumber: string, fullName: string): string => {
+export const uidGenerator = (whatsappNumber: string, fullName: string): string => {
+
   const firstLetter = fullName.charAt(0).toUpperCase();
   return `ESE${whatsappNumber}${firstLetter}`;
 };
