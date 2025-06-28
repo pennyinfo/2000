@@ -1,32 +1,30 @@
+// src/utils/uidGenerator.ts
 
-// Utility functions for generating UIDs and managing registration data
-
+// ✅ Named export: use generateUID in your imports
 export const generateUID = (whatsappNumber: string, fullName: string): string => {
   const firstLetter = fullName.charAt(0).toUpperCase();
   return `ESE${whatsappNumber}${firstLetter}`;
 };
 
+// Validates Indian mobile numbers (10 digits, starts with 6-9)
 export const validateWhatsappNumber = (number: string): boolean => {
-  // Remove any non-digit characters
   const cleanNumber = number.replace(/\D/g, '');
-  
-  // Check if it's a valid Indian mobile number (10 digits starting with 6-9)
   const indianMobileRegex = /^[6-9]\d{9}$/;
-  
   return indianMobileRegex.test(cleanNumber);
 };
 
+// Cleans up address formatting
 export const formatAddress = (address: string): string => {
   return address.trim().replace(/\s+/g, ' ');
 };
 
+// Check for duplicates based on WhatsApp number
 export const checkDuplicateWhatsapp = async (whatsappNumber: string): Promise<boolean> => {
-  // In a real application, this would check the database
-  // For now, we'll simulate with localStorage or return false
   const existingRegistrations = JSON.parse(localStorage.getItem('registrations') || '[]');
   return existingRegistrations.some((reg: any) => reg.whatsappNumber === whatsappNumber);
 };
 
+// Save a registration entry to localStorage
 export const saveRegistration = (registrationData: any): void => {
   const existingRegistrations = JSON.parse(localStorage.getItem('registrations') || '[]');
   const newRegistration = {
@@ -35,43 +33,44 @@ export const saveRegistration = (registrationData: any): void => {
     createdAt: new Date().toISOString(),
     status: 'Pending'
   };
-  
   existingRegistrations.push(newRegistration);
   localStorage.setItem('registrations', JSON.stringify(existingRegistrations));
 };
 
+// Retrieve all registrations
 export const getRegistrations = (): any[] => {
   return JSON.parse(localStorage.getItem('registrations') || '[]');
 };
 
+// Update the status of a registration
 export const updateRegistrationStatus = (id: string, status: 'Approved' | 'Pending' | 'Rejected'): void => {
   const registrations = getRegistrations();
-  const updatedRegistrations = registrations.map(reg => 
+  const updated = registrations.map(reg =>
     reg.id === id ? { ...reg, status, updatedAt: new Date().toISOString() } : reg
   );
-  localStorage.setItem('registrations', JSON.stringify(updatedRegistrations));
+  localStorage.setItem('registrations', JSON.stringify(updated));
 };
 
+// Delete a registration by ID
 export const deleteRegistration = (id: string): void => {
   const registrations = getRegistrations();
-  const filteredRegistrations = registrations.filter(reg => reg.id !== id);
-  localStorage.setItem('registrations', JSON.stringify(filteredRegistrations));
+  const filtered = registrations.filter(reg => reg.id !== id);
+  localStorage.setItem('registrations', JSON.stringify(filtered));
 };
 
-// Export data functions
+// Export registration data to CSV
 export const exportToCSV = (data: any[], filename: string): void => {
   if (data.length === 0) return;
-  
+
   const headers = Object.keys(data[0]);
   const csvContent = [
     headers.join(','),
     ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
   ].join('\n');
-  
+
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
+  link.setAttribute('href', URL.createObjectURL(blob));
   link.setAttribute('download', `${filename}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
@@ -79,9 +78,8 @@ export const exportToCSV = (data: any[], filename: string): void => {
   document.body.removeChild(link);
 };
 
+// Export registration data to PDF (simplified print version)
 export const exportToPDF = async (data: any[], filename: string): Promise<void> => {
-  // This would require a PDF library like jsPDF
-  // For now, we'll create a simple HTML print version
   const printContent = `
     <html>
       <head>
@@ -103,14 +101,14 @@ export const exportToPDF = async (data: any[], filename: string): Promise<void> 
           </thead>
           <tbody>
             ${data.map(row => 
-              `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`
+              `<tr>${Object.values(row).map(val => `<td>${val}</td>`).join('')}</tr>`
             ).join('')}
           </tbody>
         </table>
       </body>
     </html>
   `;
-  
+
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.write(printContent);
